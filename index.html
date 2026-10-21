@@ -1571,6 +1571,33 @@ dialog#detail {
 /* Keep weather and title adjacent, without separator rule. */
 .hero .weather-line + #today-title { border-top:none; }
 @media(max-width:390px) { .hero .recommendation-buttons { gap:7px; } .hero .recommendation-buttons .subtle-btn { font-size:12px; padding:11px 5px; } }
+
+/* v1.30: compact buttons and frameless checkbox filters. */
+.select-row label.fav-label {
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    padding: 4px 0;
+}
+.hero .recommendation-buttons {
+    width: auto;
+    justify-content: flex-start;
+    gap: 9px;
+}
+.hero .recommendation-buttons .subtle-btn {
+    flex: 0 1 auto;
+    width: auto;
+    font-size: 13px;
+    line-height: 1.35;
+    padding: 9px 14px;
+    white-space: nowrap;
+}
+@media (max-width: 390px) {
+    .hero .recommendation-buttons .subtle-btn {
+        font-size: 12px;
+        padding: 9px 10px;
+    }
+}
 </style>
  </head>
  <body>
@@ -1674,7 +1701,7 @@ dialog#detail {
       </label>
       <label class="fav-label">
        <input id="favorite-only" type="checkbox"/>
-       ★ 殿堂入りのみ
+       殿堂入り
       </label>
       <label class="fav-label">
        <input id="owned-only" type="checkbox"/>
@@ -6596,7 +6623,11 @@ $('today-title').textContent = b.name;
 $('today-sub').textContent = [b.country, b.type, formatAbv(b.abv) || null].filter(Boolean).join(' · ');
 const categoryPill = kindTag(b.category);
 const flavorPills = (b.flavors || []).map(v => pill(v));
-const serveText = b.serves?.length ? b.serves.join(' / ') : '';
+// v1.30: display only one serving suggestion, using the requested priority.
+// Remaining serving styles have equal priority; preserve the Excel ordering for ties.
+const servePriority = ['ソーダ', 'ソーダ割り', 'ロック', '水割り', '水', 'ストレート'];
+const serves = Array.isArray(b.serves) ? b.serves.filter(v => String(v).trim()) : [];
+const serveText = servePriority.find(v => serves.includes(v)) || serves[0] || '';
 const servePills = serveText ? [pill(serveText, 'serve-pill')] : [];
 $('today-pills').innerHTML = [categoryPill, ...flavorPills, ...servePills].join('');
 $('today-description').textContent = b.taste || b.aroma || b.note || '今日の一杯にいかがでしょうか。';
