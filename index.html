@@ -1547,8 +1547,18 @@ dialog#detail {
         gap: 10px 8px;
     }
 }
-/* v1.27 Excel-managed Hall of Fame: read-only indicator, not a button. */
-.detail-favorite-readonly {display:inline-flex;align-items:center;cursor:default;margin-bottom:25px}
+/* v1.28: detail status labels share the same typographic treatment. */
+.detail-actions { display:flex; flex-wrap:wrap; align-items:center; gap:8px 16px; }
+.detail-actions .detail-favorite-readonly,
+.detail-actions .detail-unowned {
+    display:inline-flex; align-items:center; align-self:center;
+    margin:0 0 25px; padding:0; min-height:0;
+    border:0; border-radius:0; background:none; box-shadow:none;
+    font-size:12px; font-weight:700; line-height:1.4; white-space:nowrap;
+    cursor:default;
+}
+.detail-actions .detail-favorite-readonly {color:#d9b56d;}
+.detail-actions .detail-unowned {color:#48a9ff;}
 </style>
  </head>
  <body>
@@ -6621,7 +6631,7 @@ function renderList() {
     $('cards').innerHTML = found.length ? found.map(b => `<div class="bottle" role="button" tabindex="0" data-id="${b.id}" aria-label="${esc(b.name)}の詳細を表示"><span class="bottle-top">${kindTag(b.category)}${isFav(b) ? '<span class="card-fav" aria-label="殿堂入り登録済み" title="殿堂入り">★</span>' : ''}${!isOwned(b) ? '<span class="card-unowned" title="未所持" aria-label="未所持">◆</span>' : ''}<span class="go">↗</span></span><strong>${esc(b.name)}</strong><span class="list-badges">${isFav(b) ? '<span class="card-fav" aria-label="殿堂入り登録済み" title="殿堂入り">★</span>' : ''}${!isOwned(b) ? '<span class="card-unowned" title="未所持" aria-label="未所持">◆</span>' : ''}</span><span class="bottle-origin">${esc([b.country, b.region].filter((v, i, a) => v && a.indexOf(v) === i).join(' / ') || '産地不明')}</span></div>`).join('') : '<p class="muted">該当する銘柄がありません。</p>';
 }
 function abvNumber(raw) { const n = parseFloat(raw); return Number.isFinite(n) ? (n > 0 && n < 1 ? n * 100 : n) : 0; }
-function showDetail(b) { activeDetail = b; let lines = [['酒類', b.category], ['分類', b.type], ['産地', [b.country, b.region].filter(Boolean).join(' / ')], ['蒸溜所', b.distillery], ['度数', formatAbv(b.abv)], ['所有状況', isOwned(b) ? '所持' : '◆ 未所持'], ['購入年月', formatPurchaseMonth(b.purchaseMonth)], ['定価（税込）', formatPrice(b.listPrice)], ['主な樽', b.cask], ['香り', b.aroma], ['味わい', b.taste], ['余韻', b.finish], ['特徴', b.flavors.join(' / ')], ['おすすめの飲み方', b.serves.join(' / ')], ['豆知識', b.note]]; $('detail-body').innerHTML = `<div class="detail-fixed-header"><span class="section-kicker">BOTTLE PROFILE</span><h2 class="detail-title">${esc(b.name)}</h2><div class="detail-actions">${isFav(b) ? '<span class="detail-favorite detail-favorite-readonly">★ 殿堂入り</span>' : ''}${!isOwned(b) ? '<span class="detail-unowned" aria-label="未所持">◆ 未所持</span>' : ''}</div></div><div class="detail-scroll" tabindex="0" aria-label="銘柄の詳細情報"><dl>${lines.filter(x => x[1]).map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl></div>`; if (!$('detail').open)
+function showDetail(b) { activeDetail = b; let lines = [['酒類', b.category], ['分類', b.type], ['産地', [b.country, b.region].filter(Boolean).join(' / ')], ['蒸溜所', b.distillery], ['度数', formatAbv(b.abv)], ['所有状況', isOwned(b) ? '所持' : '◆ 未所持'], ['購入年月', formatPurchaseMonth(b.purchaseMonth)], ['定価（税込）', formatPrice(b.listPrice)], ['主な樽', b.cask], ['香り', b.aroma], ['味わい', b.taste], ['余韻', b.finish], ['特徴', b.flavors.join(' / ')], ['おすすめの飲み方', b.serves.join(' / ')], ['豆知識', b.note], ['管理番号', String(b.managementNumber ?? '').trim() || '—']]; $('detail-body').innerHTML = `<div class="detail-fixed-header"><span class="section-kicker">BOTTLE PROFILE</span><h2 class="detail-title">${esc(b.name)}</h2><div class="detail-actions">${isFav(b) ? '<span class="detail-favorite detail-favorite-readonly">★ 殿堂入り</span>' : ''}${!isOwned(b) ? '<span class="detail-unowned" aria-label="未所持">◆ 未所持</span>' : ''}</div></div><div class="detail-scroll" tabindex="0" aria-label="銘柄の詳細情報"><dl>${lines.filter(x => x[1]).map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl></div>`; if (!$('detail').open)
     $('detail').showModal(); }
 async function init() { try {
     let data;
