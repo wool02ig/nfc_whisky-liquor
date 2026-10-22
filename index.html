@@ -1710,6 +1710,35 @@ dialog#detail {
   .select-row .flag-filters {gap:5px;}
   .select-row .flag-filters .fav-label {font-size:9px;gap:3px;}
 }
+
+/* v1.31 beta8: tighter header, weather alongside weather action */
+header { padding-top: 22px; padding-bottom: 21px; }
+.hero .weather-action-row { display:flex; align-items:center; gap:12px; }
+.hero .weather-action-row #weather-reco { flex:0 0 auto; min-width:0; padding:12px 16px; white-space:nowrap; }
+.hero .weather-action-row .weather-line { flex:1; min-width:0; margin:0; text-align:right; font-size:clamp(10px,2.55vw,13px); line-height:1.4; overflow-wrap:anywhere; }
+@media(max-width:390px) { .hero .weather-action-row {gap:7px;} .hero .weather-action-row #weather-reco {padding:11px 9px; font-size:12px;} }
+/* Prominent, continuously animated wave within the recommendation panel. */
+.hero { isolation:isolate; overflow:hidden; }
+.hero::before, .hero::after {
+  content:""; position:absolute; z-index:0; pointer-events:none;
+  left:-40%; width:180%; height:65%; bottom:-25%;
+  background-repeat:repeat-x; background-size:52% 100%;
+  will-change:transform;
+}
+.hero::before {
+  opacity:.65;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 250' preserveAspectRatio='none'%3E%3Cpath d='M0 75 Q75 0 150 75 T300 75 T450 75 T600 75 V250 H0Z' fill='%233f827e' fill-opacity='.45'/%3E%3C/svg%3E");
+  animation:cellar-wave-a 8s ease-in-out infinite alternate;
+}
+.hero::after {
+  opacity:.75; bottom:-32%;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 250' preserveAspectRatio='none'%3E%3Cpath d='M0 90 Q75 175 150 90 T300 90 T450 90 T600 90 V250 H0Z' fill='%2353a49c' fill-opacity='.30'/%3E%3C/svg%3E");
+  animation:cellar-wave-b 11s ease-in-out infinite alternate;
+}
+.hero > * {position:relative; z-index:1;}
+@keyframes cellar-wave-a {from {transform:translate(-8%,0) rotate(-2deg)} to {transform:translate(8%,-12%) rotate(2deg)}}
+@keyframes cellar-wave-b {from {transform:translate(7%,-8%) rotate(2deg)} to {transform:translate(-7%,4%) rotate(-2deg)}}
+@media(prefers-reduced-motion:reduce) {.hero::before,.hero::after {animation:none;}}
 </style>
  </head>
  <body>
@@ -1729,7 +1758,6 @@ dialog#detail {
   <main>
    <section aria-labelledby="today-title" class="hero">
     <p class="eyebrow" id="recommendation-date-heading">TODAY'S SELECTION</p>
-    <p class="weather-line" id="weather-line" aria-live="polite">つくばの天気を確認中…</p>
     <h2 id="today-title">
      読み込み中…
     </h2>
@@ -1741,13 +1769,14 @@ dialog#detail {
     </p>
     <p class="serve" id="today-serve">
     </p>
-    <div class="recommendation-buttons">
-     <button class="subtle-btn" id="weather-reco" type="button">☀ 天気で選ぶ</button>
+    <div class="recommendation-buttons weather-action-row">
+     <button class="subtle-btn" id="weather-reco" type="button">🌤️ 天気で選ぶ</button>
+     <p class="weather-line" id="weather-line" aria-live="polite">つくばの天気を確認中…</p>
 
     </div>
     <div class="other-recommendations" aria-label="ほかの選び方">
       <div class="mood-buttons recommendation-buttons">
-        <button class="subtle-btn" id="random-reco" type="button"><span class="mood-symbol" aria-hidden="true">⤨</span><span class="mood-label">ランダム</span></button>
+        <button class="subtle-btn" id="random-reco" type="button"><span class="mood-symbol" aria-hidden="true">🎲</span><span class="mood-label">ランダム</span></button>
         <button class="subtle-btn" data-mood="smoky" type="button"><span class="mood-symbol" aria-hidden="true">🔥</span><span class="mood-label">スモーキー</span></button>
         <button class="subtle-btn" data-mood="fruity" type="button"><span class="mood-symbol" aria-hidden="true">🍎</span><span class="mood-label">フルーティー</span></button>
         <button class="subtle-btn" data-mood="fresh" type="button"><span class="mood-symbol" aria-hidden="true">🌿</span><span class="mood-label">さっぱり</span></button>
@@ -6975,7 +7004,7 @@ async function initWeatherRecommendation() {
         const temp = Number(data.current?.temperature_2m), code = Number(data.current?.weather_code);
         if (!Number.isFinite(temp) || !Number.isFinite(code)) throw new Error('天気データが不完全');
         currentWeather = { temperature: temp, code };
-        weatherLine.textContent = `つくば ｜ ${weatherLabel(code)}・${Math.round(temp)}℃ ｜ 天気に合う1本`;
+        weatherLine.textContent = `📍つくば · ${weatherLabel(code)} · ${Math.round(temp)}℃`;
         selectedBottle = pickWeather(null, true);
         if (selectedBottle) {
             try { localStorage.setItem(lastWeatherBottleKey, bottleId(selectedBottle)); } catch (_) {}
@@ -6983,7 +7012,7 @@ async function initWeatherRecommendation() {
         renderToday();
     } catch (_) {
         currentWeather = null;
-        weatherLine.textContent = '天気を取得できませんでした ｜ ランダムで選出';
+        weatherLine.textContent = '📍つくば · 天気未取得';
         selectedBottle = pickWeather(null, true);
         if (selectedBottle) {
             try { localStorage.setItem(lastWeatherBottleKey, bottleId(selectedBottle)); } catch (_) {}
@@ -7022,8 +7051,8 @@ async function spinRecommendation(button, picker, label) {
         rouletteRunning = false;
     }
 }
-$('weather-reco').addEventListener('click', () => spinRecommendation($('weather-reco'), () => pickWeather(selectedBottle), '☀ 天気で選ぶ'));
-$('random-reco').addEventListener('click', () => spinRecommendation($('random-reco'), pickAll, '⤨ ランダム'));
+$('weather-reco').addEventListener('click', () => spinRecommendation($('weather-reco'), () => pickWeather(selectedBottle), '🌤️ 天気で選ぶ'));
+$('random-reco').addEventListener('click', () => spinRecommendation($('random-reco'), pickAll, '🎲 ランダム'));
 document.querySelectorAll('[data-mood]').forEach(button => {
     button.addEventListener('click', () => {
         const label = button.textContent;
