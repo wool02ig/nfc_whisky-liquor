@@ -1605,6 +1605,27 @@ dialog#detail {
 .hero .mood-buttons #random-reco { background:rgba(107,161,201,.13); color:#cdeafc; border-color:rgba(131,191,234,.38); box-shadow:none; }
 .hero .mood-buttons .subtle-btn:active { transform:scale(.985); }
 @media (max-width:390px) { .hero .mood-buttons { gap:7px; } .hero .mood-buttons .subtle-btn { font-size:11.5px; padding:10px 3px; } }
+
+/* v1.31 beta3: streamlined single-line selection controls and recommendation chips */
+.hero .other-recommendations { margin-top:16px; padding-top:14px; }
+.hero .mood-buttons {
+  display:grid;
+  grid-template-columns:repeat(6,minmax(108px,1fr));
+  gap:8px;
+  overflow-x:auto;
+  overscroll-behavior-x:contain;
+  -webkit-overflow-scrolling:touch;
+  padding:2px 1px 8px;
+  scrollbar-width:thin;
+}
+.hero .mood-buttons .subtle-btn { font-size:11px; padding:11px 5px; white-space:nowrap; }
+.hero #today-pills { height:auto; min-height:32px; overflow:visible; align-items:center; }
+.hero #today-pills .kind,
+.hero #today-pills .pill { box-sizing:border-box; min-height:29px; display:inline-flex; align-items:center; justify-content:center; border-radius:18px; padding:5px 10px; font-size:12px; line-height:1.35; font-weight:650; max-width:none; overflow:visible; white-space:nowrap; }
+@media (max-width:390px) {
+  .hero .mood-buttons { gap:7px; }
+  .hero .mood-buttons .subtle-btn { font-size:11px; padding:10px 5px; }
+}
 </style>
  </head>
  <body>
@@ -1641,7 +1662,6 @@ dialog#detail {
 
     </div>
     <div class="other-recommendations" aria-label="ほかの選び方">
-      <h3>ほかの選び方</h3>
       <div class="mood-buttons recommendation-buttons">
         <button class="subtle-btn" id="random-reco" type="button">⤨ ランダム</button>
         <button class="subtle-btn" data-mood="smoky" type="button">🔥 スモーキー</button>
@@ -6640,14 +6660,15 @@ const b = selectedBottle || pool[todayIndex];
 $('today-title').textContent = b.name;
 $('today-sub').textContent = [b.country, b.type, formatAbv(b.abv) || null].filter(Boolean).join(' · ');
 const categoryPill = kindTag(b.category);
-const flavorPills = (b.flavors || []).map(v => pill(v));
+// 味わいタグはおすすめ欄では非表示（抽選判定には引き続き利用）
 // v1.30: display only one serving suggestion, using the requested priority.
 // Remaining serving styles have equal priority; preserve the Excel ordering for ties.
 const servePriority = ['ソーダ', 'ソーダ割り', 'ロック', '水割り', '水', 'ストレート'];
 const serves = Array.isArray(b.serves) ? b.serves.filter(v => String(v).trim()) : [];
 const serveText = servePriority.find(v => serves.includes(v)) || serves[0] || '';
-const servePills = serveText ? [pill(serveText, 'serve-pill')] : [];
-$('today-pills').innerHTML = [categoryPill, ...flavorPills, ...servePills].join('');
+const serveName = ({'ソーダ':'ソーダ割り','ソーダ割り':'ソーダ割り','ロック':'ロック','水':'水割り','水割り':'水割り','ストレート':'ストレート','トワイスアップ':'トワイスアップ','トニックウォーター':'トニックウォーター割り','お湯':'お湯割り'})[serveText] || serveText;
+const servePills = serveName ? [pill(serveName + 'がおすすめ', 'serve-pill')] : [];
+$('today-pills').innerHTML = [categoryPill, ...servePills].join('');
 $('today-description').textContent = b.taste || b.aroma || b.note || '今日の一杯にいかがでしょうか。';
 $('today-serve').textContent = '';
 }
