@@ -1626,6 +1626,70 @@ dialog#detail {
   .hero .mood-buttons { gap:7px; }
   .hero .mood-buttons .subtle-btn { font-size:11px; padding:10px 5px; }
 }
+
+/* v1.31 beta4: six no-scroll buttons in a compact 3x2 grid. */
+.hero .mood-buttons.recommendation-buttons {
+ display:grid; grid-template-columns:repeat(3,minmax(0,1fr));
+ width:100%; gap:8px; margin-top:0; padding:0;
+ overflow:visible; overscroll-behavior:auto;
+}
+.hero .mood-buttons.recommendation-buttons .subtle-btn {
+ display:flex; flex-direction:column; align-items:center; justify-content:center;
+ gap:3px; min-width:0; width:100%; min-height:58px;
+ padding:7px 2px; white-space:normal; line-height:1.15;
+ font-size:11px; box-sizing:border-box;
+}
+.hero .mood-symbol {font-size:18px; line-height:1.2;}
+.hero .mood-label {font-size:clamp(9px,2.7vw,12px); letter-spacing:-.03em; white-space:nowrap;}
+.card-beginner {color:#91c9a6; font-size:13px; font-weight:750; line-height:1; flex-shrink:0;}
+.cards.list-view .bottle-top .card-beginner {display:none;}
+.detail-actions .detail-beginner {
+ display:inline-flex; align-items:center; align-self:center;
+ margin:0 0 25px; padding:0; min-height:0;
+ color:#91c9a6; font-size:12px; font-weight:700;
+ line-height:1.4; white-space:nowrap;
+}
+
+/* v1.31 beta5: fixed six-button single row (no horizontal scrolling) */
+.hero .mood-buttons.recommendation-buttons {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 5px; overflow: visible; width: 100%; padding: 0;
+}
+.hero .mood-buttons.recommendation-buttons .subtle-btn {
+  min-width: 0; min-height: 53px; padding: 6px 0;
+  gap: 4px; overflow: hidden; white-space: normal;
+}
+.hero .mood-buttons .mood-symbol {font-size: 15px; line-height: 1;}
+.hero .mood-buttons .mood-label {
+  display: block; max-width: 100%; font-size: clamp(7px, 1.95vw, 10px);
+  letter-spacing: -.055em; white-space: nowrap; line-height: 1.25;
+}
+/* The list keeps the name on its first row; origin always sits below it. */
+@media (max-width: 600px) {
+  .cards.list-view .bottle {
+    display: grid; grid-template-columns: auto minmax(0, 1fr) auto;
+    column-gap: 7px; row-gap: 5px; align-items: start;
+    padding: 10px 11px; min-width: 0;
+  }
+  .cards.list-view .bottle-top {
+    grid-column: 1; grid-row: 1; width: auto; min-width: 0;
+    margin: 1px 0 0; align-self: start;
+  }
+  .cards.list-view .bottle strong {
+    grid-column: 2; grid-row: 1; min-width: 0; width: 100%;
+    display: block; margin: 0; overflow-wrap: anywhere;
+    word-break: normal; white-space: normal; align-self: start;
+  }
+  .cards.list-view .list-badges {
+    grid-column: 3; grid-row: 1; margin: 2px 0 0;
+    align-self: start; justify-self: end; gap: 4px;
+  }
+  .cards.list-view .bottle-origin {
+    grid-column: 1 / -1; grid-row: 2; max-width: none;
+    margin: 0; width: 100%; text-align: right;
+    overflow-wrap: anywhere; white-space: normal;
+  }
+}
 </style>
  </head>
  <body>
@@ -1663,12 +1727,12 @@ dialog#detail {
     </div>
     <div class="other-recommendations" aria-label="ほかの選び方">
       <div class="mood-buttons recommendation-buttons">
-        <button class="subtle-btn" id="random-reco" type="button">⤨ ランダム</button>
-        <button class="subtle-btn" data-mood="smoky" type="button">🔥 スモーキー</button>
-        <button class="subtle-btn" data-mood="fruity" type="button">🍎 フルーティー</button>
-        <button class="subtle-btn" data-mood="fresh" type="button">🌿 さっぱり</button>
-        <button class="subtle-btn" data-mood="sweet" type="button">🍯 甘口</button>
-        <button class="subtle-btn" data-mood="dry" type="button">🥃 辛口</button>
+        <button class="subtle-btn" id="random-reco" type="button"><span class="mood-symbol" aria-hidden="true">⤨</span><span class="mood-label">ランダム</span></button>
+        <button class="subtle-btn" data-mood="smoky" type="button"><span class="mood-symbol" aria-hidden="true">🔥</span><span class="mood-label">スモーキー</span></button>
+        <button class="subtle-btn" data-mood="fruity" type="button"><span class="mood-symbol" aria-hidden="true">🍎</span><span class="mood-label">フルーティー</span></button>
+        <button class="subtle-btn" data-mood="fresh" type="button"><span class="mood-symbol" aria-hidden="true">🌿</span><span class="mood-label">さっぱり</span></button>
+        <button class="subtle-btn" data-mood="sweet" type="button"><span class="mood-symbol" aria-hidden="true">🍯</span><span class="mood-label">甘口</span></button>
+        <button class="subtle-btn" data-mood="dry" type="button"><span class="mood-symbol" aria-hidden="true">🥃</span><span class="mood-label">辛口</span></button>
       </div>
     </div>
    </section>
@@ -6624,6 +6688,7 @@ let items = [], todayIndex = 0, activeDetail = null, selectedBottle = null;
 // 殿堂入りはExcel管理台帳のAG列を元に生成するJSONの favorite フラグだけで判定。
 // ブラウザへの登録・保存や過去の値の引継ぎは行わない。
 const isFav = b => b.favorite === true || b.favorite === '★';
+const isBeginner = b => b.beginner === true || b.beginner === 'true' || b.beginner === '○' || b.beginner === '◯' || b.beginner === '〇' || b.beginner === '1';
 const isOwned = b => Boolean(String(b.purchaseMonth ?? '').trim());
 const ownedItems = () => items.filter(isOwned);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -6704,10 +6769,10 @@ function renderList() {
             break;
     }
     $('count').textContent = `${found.length} / ${items.length} BOTTLES`;
-    $('cards').innerHTML = found.length ? found.map(b => `<div class="bottle" role="button" tabindex="0" data-id="${b.id}" aria-label="${esc(b.name)}の詳細を表示"><span class="bottle-top">${kindTag(b.category)}${isFav(b) ? '<span class="card-fav" aria-label="殿堂入り登録済み" title="殿堂入り">★</span>' : ''}${!isOwned(b) ? '<span class="card-unowned" title="未所持" aria-label="未所持">◆</span>' : ''}<span class="go">↗</span></span><strong>${esc(b.name)}</strong><span class="list-badges">${isFav(b) ? '<span class="card-fav" aria-label="殿堂入り登録済み" title="殿堂入り">★</span>' : ''}${!isOwned(b) ? '<span class="card-unowned" title="未所持" aria-label="未所持">◆</span>' : ''}</span><span class="bottle-origin">${esc([b.country, b.region].filter((v, i, a) => v && a.indexOf(v) === i).join(' / ') || '産地不明')}</span></div>`).join('') : '<p class="muted">該当する銘柄がありません。</p>';
+    $('cards').innerHTML = found.length ? found.map(b => `<div class="bottle" role="button" tabindex="0" data-id="${b.id}" aria-label="${esc(b.name)}の詳細を表示"><span class="bottle-top">${kindTag(b.category)}${isFav(b) ? '<span class="card-fav" aria-label="殿堂入り登録済み" title="殿堂入り">★</span>' : ''}${isBeginner(b) ? '<span class="card-beginner" aria-label="初心者向け" title="初心者向け">▼</span>' : ''}${!isOwned(b) ? '<span class="card-unowned" title="未所持" aria-label="未所持">◆</span>' : ''}<span class="go">↗</span></span><strong>${esc(b.name)}</strong><span class="list-badges">${isFav(b) ? '<span class="card-fav" aria-label="殿堂入り登録済み" title="殿堂入り">★</span>' : ''}${isBeginner(b) ? '<span class="card-beginner" aria-label="初心者向け" title="初心者向け">▼</span>' : ''}${!isOwned(b) ? '<span class="card-unowned" title="未所持" aria-label="未所持">◆</span>' : ''}</span><span class="bottle-origin">${esc([b.country, b.region].filter((v, i, a) => v && a.indexOf(v) === i).join(' / ') || '産地不明')}</span></div>`).join('') : '<p class="muted">該当する銘柄がありません。</p>';
 }
 function abvNumber(raw) { const n = parseFloat(raw); return Number.isFinite(n) ? (n > 0 && n < 1 ? n * 100 : n) : 0; }
-function showDetail(b) { activeDetail = b; let lines = [['酒類', b.category], ['分類', b.type], ['産地', [b.country, b.region].filter(Boolean).join(' / ')], ['蒸溜所', b.distillery], ['度数', formatAbv(b.abv)], ['所有状況', isOwned(b) ? '所持' : '◆ 未所持'], ['購入年月', formatPurchaseMonth(b.purchaseMonth)], ['定価（税込）', formatPrice(b.listPrice)], ['主な樽', b.cask], ['香り', b.aroma], ['味わい', b.taste], ['余韻', b.finish], ['特徴', b.flavors.join(' / ')], ['おすすめの飲み方', b.serves.join(' / ')], ['豆知識', b.note], ['管理番号', String(b.managementNumber ?? '').trim() || '—']]; $('detail-body').innerHTML = `<div class="detail-fixed-header"><span class="section-kicker">BOTTLE PROFILE</span><h2 class="detail-title">${esc(b.name)}</h2><div class="detail-actions">${isFav(b) ? '<span class="detail-favorite detail-favorite-readonly">★ 殿堂入り</span>' : ''}${!isOwned(b) ? '<span class="detail-unowned" aria-label="未所持">◆ 未所持</span>' : ''}</div></div><div class="detail-scroll" tabindex="0" aria-label="銘柄の詳細情報"><dl>${lines.filter(x => x[1]).map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl></div>`; if (!$('detail').open)
+function showDetail(b) { activeDetail = b; let lines = [['酒類', b.category], ['分類', b.type], ['産地', [b.country, b.region].filter(Boolean).join(' / ')], ['蒸溜所', b.distillery], ['度数', formatAbv(b.abv)], ['所有状況', isOwned(b) ? '所持' : '◆ 未所持'], ['購入年月', formatPurchaseMonth(b.purchaseMonth)], ['定価（税込）', formatPrice(b.listPrice)], ['主な樽', b.cask], ['香り', b.aroma], ['味わい', b.taste], ['余韻', b.finish], ['特徴', b.flavors.join(' / ')], ['おすすめの飲み方', b.serves.join(' / ')], ['豆知識', b.note], ['管理番号', String(b.managementNumber ?? '').trim() || '—']]; $('detail-body').innerHTML = `<div class="detail-fixed-header"><span class="section-kicker">BOTTLE PROFILE</span><h2 class="detail-title">${esc(b.name)}</h2><div class="detail-actions">${isFav(b) ? '<span class="detail-favorite detail-favorite-readonly">★ 殿堂入り</span>' : ''}${isBeginner(b) ? '<span class="detail-beginner" aria-label="初心者向け">▼ 初心者向け</span>' : ''}${!isOwned(b) ? '<span class="detail-unowned" aria-label="未所持">◆ 未所持</span>' : ''}</div></div><div class="detail-scroll" tabindex="0" aria-label="銘柄の詳細情報"><dl>${lines.filter(x => x[1]).map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl></div>`; if (!$('detail').open)
     $('detail').showModal(); }
 async function init() { try {
     let data;
