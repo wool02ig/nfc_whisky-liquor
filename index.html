@@ -1690,6 +1690,26 @@ dialog#detail {
     overflow-wrap: anywhere; white-space: normal;
   }
 }
+
+/* v1.31 beta6: keep all three filter flags on the same row on mobile. */
+.select-row .flag-filters {
+  display:flex; flex:0 0 100%; align-items:center; flex-wrap:nowrap;
+  justify-content:flex-start; gap:clamp(6px, 2.4vw, 17px); min-width:0;
+}
+.select-row .flag-filters .fav-label {
+  display:inline-flex; align-items:center; gap:clamp(3px, 1vw, 7px);
+  padding:4px 0; min-width:0; max-width:none; white-space:nowrap;
+  flex:0 1 auto; font-size:clamp(9px, 2.5vw, 12px);
+  border:0; background:transparent; letter-spacing:-.02em;
+}
+.select-row .flag-filters input[type="checkbox"] {
+  width:clamp(13px,3.8vw,16px); height:clamp(13px,3.8vw,16px);
+  flex:0 0 auto; margin:0; accent-color:#dcb46a;
+}
+@media (max-width:360px) {
+  .select-row .flag-filters {gap:5px;}
+  .select-row .flag-filters .fav-label {font-size:9px;gap:3px;}
+}
 </style>
  </head>
  <body>
@@ -1793,6 +1813,9 @@ dialog#detail {
         <option value="abv-desc">
          度数：高い順
         </option>
+        <option value="abv-asc">
+         度数：低い順
+        </option>
         <option value="price-desc">
          定価：高い順
         </option>
@@ -1801,14 +1824,11 @@ dialog#detail {
         </option>
        </select>
       </label>
-      <label class="fav-label">
-       <input id="favorite-only" type="checkbox"/>
-       殿堂入り
-      </label>
-      <label class="fav-label">
-       <input id="owned-only" type="checkbox"/>
-       所持品のみ
-      </label>
+      <div class="flag-filters" role="group" aria-label="ボトルの絞り込み">
+       <label class="fav-label"><input id="favorite-only" type="checkbox"/>殿堂入り</label>
+       <label class="fav-label"><input id="owned-only" type="checkbox"/>所持品のみ</label>
+       <label class="fav-label"><input id="beginner-only" type="checkbox"/>初心者おすすめ</label>
+      </div>
      </div>
     </div>
     <div aria-label="一覧の表示形式" class="view-controls" role="group">
@@ -6738,8 +6758,8 @@ $('today-description').textContent = b.taste || b.aroma || b.note || '今日の�
 $('today-serve').textContent = '';
 }
 function renderList() {
-    const q = $('search').value.toLocaleLowerCase('ja'), c = $('category').value, f = $('flavor').value, onlyFav = $('favorite-only').checked, ownedOnly = $('owned-only').checked, sort = $('sort').value;
-    let found = items.filter(b => (!c || b.category === c) && (!f || (b.flavors || []).includes(f)) && (!onlyFav || isFav(b)) && (!ownedOnly || isOwned(b)) && [b.name, b.distillery, b.aroma, b.taste, b.country, b.region, b.type].join(' ').toLocaleLowerCase('ja').includes(q));
+    const q = $('search').value.toLocaleLowerCase('ja'), c = $('category').value, f = $('flavor').value, onlyFav = $('favorite-only').checked, ownedOnly = $('owned-only').checked, beginnerOnly = $('beginner-only').checked, sort = $('sort').value;
+    let found = items.filter(b => (!c || b.category === c) && (!f || (b.flavors || []).includes(f)) && (!onlyFav || isFav(b)) && (!ownedOnly || isOwned(b)) && (!beginnerOnly || isBeginner(b)) && [b.name, b.distillery, b.aroma, b.taste, b.country, b.region, b.type].join(' ').toLocaleLowerCase('ja').includes(q));
     const nameSort = (a, b) => a.name.localeCompare(b.name, 'ja');
     switch (sort) {
         case 'name':
@@ -6753,6 +6773,9 @@ function renderList() {
             break;
         case 'abv-desc':
             found.sort((a, b) => abvNumber(b.abv) - abvNumber(a.abv) || nameSort(a, b));
+            break;
+        case 'abv-asc':
+            found.sort((a, b) => abvNumber(a.abv) - abvNumber(b.abv) || nameSort(a, b));
             break;
         case 'price-desc':
             found.sort((a, b) => Number(b.listPrice || 0) - Number(a.listPrice || 0) || nameSort(a, b));
@@ -6976,7 +6999,8 @@ async function spinRecommendation(button, picker, label) {
     const hero = document.querySelector('.hero');
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     for (const b of document.querySelectorAll('.recommendation-buttons button')) b.disabled = true;
-    button.textContent = '抽選中… ✦';
+    const originalMarkup = button.innerHTML;
+    button.textContent = '抽選中';
     hero.classList.add('is-rolling');
     try {
         if (!reduced) {
@@ -6994,7 +7018,7 @@ async function spinRecommendation(button, picker, label) {
     } finally {
         hero.classList.remove('is-rolling');
         for (const b of document.querySelectorAll('.recommendation-buttons button')) b.disabled = false;
-        button.textContent = label;
+        button.innerHTML = originalMarkup;
         rouletteRunning = false;
     }
 }
@@ -7010,7 +7034,7 @@ document.querySelectorAll('[data-mood]').forEach(button => {
         spinRecommendation(button, () => pickMood(button.dataset.mood), label);
     });
 });
-['search', 'category', 'flavor', 'sort', 'favorite-only', 'owned-only'].forEach(x => $(x).addEventListener(x === 'search' ? 'input' : 'change', renderList));
+['search', 'category', 'flavor', 'sort', 'favorite-only', 'owned-only', 'beginner-only'].forEach(x => $(x).addEventListener(x === 'search' ? 'input' : 'change', renderList));
 $('cards').addEventListener('click', e => { const b = items.find(x => String(x.id) === e.target.closest('[data-id]')?.dataset.id); if (!b)
     return; showDetail(b); });
 $('cards').addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('.bottle')) {
