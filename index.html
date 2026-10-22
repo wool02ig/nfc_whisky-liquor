@@ -1597,6 +1597,14 @@ dialog#detail {
         padding: 9px 10px;
     }
 }
+/* v1.31 beta: secondary recommendation controls */
+.hero .other-recommendations { margin-top: 20px; padding-top: 16px; border-top: 1px solid rgba(225,205,166,.22); }
+.hero .other-recommendations h3 { font-size: 13px; font-weight: 700; letter-spacing:.07em; margin: 0 0 12px; color: #e8d4b5; }
+.hero .mood-buttons { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; width:100%; margin-top:0; }
+.hero .mood-buttons .subtle-btn { width:100%; min-width:0; font-size:12px; padding:11px 5px; flex:none; border:1px solid rgba(226,206,169,.32); background:rgba(237,222,190,.075); color:#f4e5ce; box-shadow:none; }
+.hero .mood-buttons #random-reco { background:rgba(107,161,201,.13); color:#cdeafc; border-color:rgba(131,191,234,.38); box-shadow:none; }
+.hero .mood-buttons .subtle-btn:active { transform:scale(.985); }
+@media (max-width:390px) { .hero .mood-buttons { gap:7px; } .hero .mood-buttons .subtle-btn { font-size:11.5px; padding:10px 3px; } }
 </style>
  </head>
  <body>
@@ -1630,7 +1638,18 @@ dialog#detail {
     </p>
     <div class="recommendation-buttons">
      <button class="subtle-btn" id="weather-reco" type="button">☀ 天気で選ぶ</button>
-     <button class="subtle-btn" id="random-reco" type="button">⤨ ランダム</button>
+
+    </div>
+    <div class="other-recommendations" aria-label="ほかの選び方">
+      <h3>ほかの選び方</h3>
+      <div class="mood-buttons recommendation-buttons">
+        <button class="subtle-btn" id="random-reco" type="button">⤨ ランダム</button>
+        <button class="subtle-btn" data-mood="smoky" type="button">🔥 スモーキー</button>
+        <button class="subtle-btn" data-mood="fruity" type="button">🍎 フルーティー</button>
+        <button class="subtle-btn" data-mood="fresh" type="button">🌿 さっぱり</button>
+        <button class="subtle-btn" data-mood="sweet" type="button">🍯 甘口</button>
+        <button class="subtle-btn" data-mood="dry" type="button">🥃 辛口</button>
+      </div>
     </div>
    </section>
    <section class="catalog" id="catalog">
@@ -6763,16 +6782,24 @@ function weatherScore(b) {
     else add(['フルーティー','ハーブ'], 2);
     return score;
 }
-function pickWeather(exclude = null, daily = false) {
+const lastWeatherBottleKey = 'whisky-liquor-last-weather-v130';
+function pickWeather(exclude = null, avoidPrevious = false) {
     let pool = ownedItems();
     if (!pool.length) return null;
     if (pool.length > 1 && exclude) pool = pool.filter(b => b !== exclude);
+    if (avoidPrevious && pool.length > 1) {
+        let lastId = null;
+        try { lastId = localStorage.getItem(lastWeatherBottleKey); } catch (_) {}
+        if (lastId) {
+            const alternatives = pool.filter(b => bottleId(b) !== lastId);
+            if (alternatives.length) pool = alternatives;
+        }
+    }
     if (!currentWeather) return pool[Math.floor(Math.random() * pool.length)];
     const scored = pool.map(b => ({ b, weight: weatherScore(b) }));
     // Include all owned bottles; higher compatibility increases probability without excluding rarer types.
     const sum = scored.reduce((v, x) => v + x.weight, 0);
-    const hash = chooseIndex(tokyoDate(), 1000000) / 1000000;
-    let draw = (daily ? hash : Math.random()) * sum;
+    let draw = Math.random() * sum;
     for (const row of scored) { draw -= row.weight; if (draw < 0) return row.b; }
     return scored[scored.length - 1].b;
 }
@@ -6781,15 +6808,53 @@ let randomHistory = [];
 try { const stored = JSON.parse(localStorage.getItem(randomHistoryKey) || '[]'); if (Array.isArray(stored)) randomHistory = stored; } catch (_) {}
 const bottleId = b => [b.name, b.category, b.distillery].join('|');
 function pickAll() {
-    if (!items.length) return null;
-    const ids = new Set(items.map(bottleId));
+    const owned = ownedItems();
+    if (!owned.length) return null;
+    const ids = new Set(owned.map(bottleId));
     randomHistory = randomHistory.filter(id => ids.has(id));
-    let pool = items.filter(b => !randomHistory.includes(bottleId(b)) && (items.length < 2 || b !== selectedBottle));
-    if (!pool.length) { randomHistory = []; pool = items.filter(b => items.length < 2 || b !== selectedBottle); }
-    const b = pool[Math.floor(Math.random() * pool.length)] || items[0];
+    let pool = owned.filter(b => !randomHistory.includes(bottleId(b)) && (owned.length < 2 || b !== selectedBottle));
+    if (!pool.length) {
+        randomHistory = [];
+        pool = owned.filter(b => owned.length < 2 || b !== selectedBottle);
+    }
+    const b = pool[Math.floor(Math.random() * pool.length)] || owned[0];
     randomHistory.push(bottleId(b));
     try { localStorage.setItem(randomHistoryKey, JSON.stringify(randomHistory)); } catch (_) {}
     return b;
+}
+// v1.31 beta: use the existing Excel flavor tags and owned bottles only.
+// "Dry" is interpreted as bitter / maritime / woody rather than sweetness.
+const moodProfiles = {
+    smoky: { 'スモーキー': 5 },
+    fruity: { 'フルーティー': 5 },
+    fresh: { 'ハーブ': 5, 'フルーティー': 3, '潮': 2 },
+    sweet: { '甘い': 5 },
+    dry: { 'ビター': 5, '潮': 4, 'ウッディー': 2 }
+};
+const lastMoodKey = 'whisky-liquor-mood-history-v131';
+let lastMood = {};
+try { lastMood = JSON.parse(localStorage.getItem(lastMoodKey) || '{}') || {}; } catch (_) {}
+function pickMood(mood) {
+    const profile = moodProfiles[mood];
+    if (!profile) return null;
+    const candidates = ownedItems().map(b => {
+        const tags = new Set(b.flavors || []);
+        let weight = Object.entries(profile).reduce((total, [tag, point]) => total + (tags.has(tag) ? point : 0), 0);
+        if (mood === 'fresh' && tags.has('スモーキー')) weight *= 0.45;
+        if (mood === 'dry' && tags.has('甘い')) weight *= 0.5;
+        return { b, weight };
+    }).filter(x => x.weight > 0);
+    if (!candidates.length) return null;
+    const lastId = lastMood[mood];
+    let pool = candidates.filter(x => bottleId(x.b) !== lastId && (candidates.length <= 1 || x.b !== selectedBottle));
+    if (!pool.length) pool = candidates.filter(x => bottleId(x.b) !== lastId);
+    if (!pool.length) pool = candidates;
+    let draw = Math.random() * pool.reduce((sum, x) => sum + x.weight, 0);
+    let chosen = pool[pool.length - 1].b;
+    for (const row of pool) { draw -= row.weight; if (draw < 0) { chosen = row.b; break; } }
+    lastMood[mood] = bottleId(chosen);
+    try { localStorage.setItem(lastMoodKey, JSON.stringify(lastMood)); } catch (_) {}
+    return chosen;
 }
 async function initWeatherRecommendation() {
     const controller = new AbortController();
@@ -6803,10 +6868,18 @@ async function initWeatherRecommendation() {
         currentWeather = { temperature: temp, code };
         weatherLine.textContent = `つくば ｜ ${weatherLabel(code)}・${Math.round(temp)}℃ ｜ 天気に合う1本`;
         selectedBottle = pickWeather(null, true);
+        if (selectedBottle) {
+            try { localStorage.setItem(lastWeatherBottleKey, bottleId(selectedBottle)); } catch (_) {}
+        }
         renderToday();
     } catch (_) {
         currentWeather = null;
         weatherLine.textContent = '天気を取得できませんでした ｜ ランダムで選出';
+        selectedBottle = pickWeather(null, true);
+        if (selectedBottle) {
+            try { localStorage.setItem(lastWeatherBottleKey, bottleId(selectedBottle)); } catch (_) {}
+        }
+        renderToday();
     } finally { clearTimeout(timeout); }
 }
 async function spinRecommendation(button, picker, label) {
@@ -6827,6 +6900,9 @@ async function spinRecommendation(button, picker, label) {
             }
         }
         selectedBottle = choice;
+        if (button.id === 'weather-reco') {
+            try { localStorage.setItem(lastWeatherBottleKey, bottleId(choice)); } catch (_) {}
+        }
         renderToday();
         if (!reduced) confettiBurst();
     } finally {
@@ -6838,6 +6914,16 @@ async function spinRecommendation(button, picker, label) {
 }
 $('weather-reco').addEventListener('click', () => spinRecommendation($('weather-reco'), () => pickWeather(selectedBottle), '☀ 天気で選ぶ'));
 $('random-reco').addEventListener('click', () => spinRecommendation($('random-reco'), pickAll, '⤨ ランダム'));
+document.querySelectorAll('[data-mood]').forEach(button => {
+    button.addEventListener('click', () => {
+        const label = button.textContent;
+        if (!ownedItems().some(b => (b.flavors || []).some(tag => tag in moodProfiles[button.dataset.mood]))) {
+            weatherLine.textContent = '選んだ味わいに合う所持銘柄がありません';
+            return;
+        }
+        spinRecommendation(button, () => pickMood(button.dataset.mood), label);
+    });
+});
 ['search', 'category', 'flavor', 'sort', 'favorite-only', 'owned-only'].forEach(x => $(x).addEventListener(x === 'search' ? 'input' : 'change', renderList));
 $('cards').addEventListener('click', e => { const b = items.find(x => String(x.id) === e.target.closest('[data-id]')?.dataset.id); if (!b)
     return; showDetail(b); });
