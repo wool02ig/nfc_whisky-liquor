@@ -1717,28 +1717,34 @@ header { padding-top: 22px; padding-bottom: 21px; }
 .hero .weather-action-row #weather-reco { flex:0 0 auto; min-width:0; padding:12px 16px; white-space:nowrap; }
 .hero .weather-action-row .weather-line { flex:1; min-width:0; margin:0; text-align:right; font-size:clamp(10px,2.55vw,13px); line-height:1.4; overflow-wrap:anywhere; }
 @media(max-width:390px) { .hero .weather-action-row {gap:7px;} .hero .weather-action-row #weather-reco {padding:11px 9px; font-size:12px;} }
-/* Prominent, continuously animated wave within the recommendation panel. */
+/* v1.31 beta9: gentle, full-panel color drift, without visible wave edges. */
 .hero { isolation:isolate; overflow:hidden; }
 .hero::before, .hero::after {
-  content:""; position:absolute; z-index:0; pointer-events:none;
-  left:-40%; width:180%; height:65%; bottom:-25%;
-  background-repeat:repeat-x; background-size:52% 100%;
+  content:""; position:absolute; inset:-24%; z-index:0;
+  pointer-events:none; border-radius:inherit;
   will-change:transform;
 }
 .hero::before {
-  opacity:.65;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 250' preserveAspectRatio='none'%3E%3Cpath d='M0 75 Q75 0 150 75 T300 75 T450 75 T600 75 V250 H0Z' fill='%233f827e' fill-opacity='.45'/%3E%3C/svg%3E");
-  animation:cellar-wave-a 8s ease-in-out infinite alternate;
+  background:radial-gradient(ellipse 68% 65% at 28% 43%, rgba(58,105,96,.24), transparent 80%),
+             radial-gradient(ellipse 65% 76% at 79% 63%, rgba(37,84,79,.19), transparent 82%);
+  animation:cellar-ambient-a 18s ease-in-out infinite alternate;
 }
 .hero::after {
-  opacity:.75; bottom:-32%;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 250' preserveAspectRatio='none'%3E%3Cpath d='M0 90 Q75 175 150 90 T300 90 T450 90 T600 90 V250 H0Z' fill='%2353a49c' fill-opacity='.30'/%3E%3C/svg%3E");
-  animation:cellar-wave-b 11s ease-in-out infinite alternate;
+  background:radial-gradient(ellipse 73% 70% at 60% 29%, rgba(74,116,103,.12), transparent 85%);
+  animation:cellar-ambient-b 25s ease-in-out infinite alternate;
 }
 .hero > * {position:relative; z-index:1;}
-@keyframes cellar-wave-a {from {transform:translate(-8%,0) rotate(-2deg)} to {transform:translate(8%,-12%) rotate(2deg)}}
-@keyframes cellar-wave-b {from {transform:translate(7%,-8%) rotate(2deg)} to {transform:translate(-7%,4%) rotate(-2deg)}}
-@media(prefers-reduced-motion:reduce) {.hero::before,.hero::after {animation:none;}}
+@keyframes cellar-ambient-a {
+  from { transform:translate(-4%, 2%) scale(1.01); }
+  to   { transform:translate(4%, -3%) scale(1.07); }
+}
+@keyframes cellar-ambient-b {
+  from { transform:translate(3%, -2%) scale(1.06); }
+  to   { transform:translate(-4%, 3%) scale(1.0); }
+}
+@media (prefers-reduced-motion:reduce) {
+  .hero::before,.hero::after {animation:none;}
+}
 </style>
  </head>
  <body>
