@@ -1734,6 +1734,8 @@ header { padding-top: 22px; padding-bottom: 21px; }
   animation:cellar-ambient-b 25s ease-in-out infinite alternate;
 }
 .hero > * {position:relative; z-index:1;}
+/* Keep celebratory confetti above the animated background and bottle content. */
+.hero > .confetti-layer { position:absolute; inset:0; z-index:8; pointer-events:none; }
 @keyframes cellar-ambient-a {
   from { transform:translate(-4%, 2%) scale(1.01); }
   to   { transform:translate(4%, -3%) scale(1.07); }
