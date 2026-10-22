@@ -6771,6 +6771,33 @@ function formatPurchaseMonth(v) { const s = String(v ?? '').trim(); const m = s.
 function kindClass(c) { return ({ 'ウイスキー': 'whisky', 'ジン': 'gin', '梅酒': 'umeshu', '焼酎': 'shochu', 'リキュール': 'liqueur' })[c] || 'other'; }
 function kindTag(c) { return `<span class="kind kind-${kindClass(c)}">${esc(c || 'その他')}</span>`; }
 function pill(s, className = '') { return `<span class="pill${className ? ' ' + className : ''}">${esc(s)}</span>`; }
+// Select a serving independently of which recommendation button was pressed.
+function chooseServing(b) {
+    const priceRaw = String(b.listPrice ?? '').trim();
+    const price = Number(priceRaw.replace(/[,，円\s]/g, ''));
+    if (priceRaw && Number.isFinite(price) && price >= 10000) return 'ストレート';
+    const aliases = { 'ソーダ':'ソーダ割り', 'ソーダ割り':'ソーダ割り',
+        '水':'水割り', '水割り':'水割り', 'お湯':'お湯割り', 'お湯割り':'お湯割り',
+        'トニックウォーター':'トニックウォーター割り' };
+    const registered = [...new Set((Array.isArray(b.serves) ? b.serves : [])
+        .map(s => aliases[String(s).trim()] || String(s).trim()).filter(Boolean))];
+    if (!registered.length) return '';
+    const temp = currentWeather?.temperature, code = currentWeather?.code;
+    if (!Number.isFinite(temp) || !Number.isFinite(code))
+        return registered[Math.floor(Math.random() * registered.length)];
+    const wet = [51,53,55,56,57,61,63,65,66,67,71,73,75,77,80,81,82,85,86,95,96,99].includes(code);
+    let preferred;
+    if (temp >= 30) preferred = ['ソーダ割り', 'ロック'];
+    else if (temp >= 25) preferred = wet ? ['ロック', '水割り'] : ['ソーダ割り', '水割り'];
+    else if (temp >= 20) preferred = wet ? ['ストレート', 'ロック'] : ['ロック', 'ソーダ割り'];
+    else if (temp >= 15) preferred = wet ? ['ストレート', 'トワイスアップ'] : ['ストレート', 'ロック'];
+    else if (temp >= 10) preferred = wet ? ['お湯割り', 'ストレート'] : ['ストレート', 'トワイスアップ'];
+    else preferred = ['お湯割り', 'ストレート'];
+    const matches = registered.filter(s => preferred.includes(s));
+    const options = matches.length ? matches : registered;
+    return options[Math.floor(Math.random() * options.length)];
+}
+
 function renderToday() { const pool = ownedItems(); if (!pool.length && !selectedBottle) {
     $('today-title').textContent = '所持ボトルがありません';
     $('today-pills').innerHTML = '';
@@ -6783,12 +6810,8 @@ $('today-title').textContent = b.name;
 $('today-sub').textContent = [b.country, b.type, formatAbv(b.abv) || null].filter(Boolean).join(' · ');
 const categoryPill = kindTag(b.category);
 // 味わいタグはおすすめ欄では非表示（抽選判定には引き続き利用）
-// v1.30: display only one serving suggestion, using the requested priority.
-// Remaining serving styles have equal priority; preserve the Excel ordering for ties.
-const servePriority = ['ソーダ', 'ソーダ割り', 'ロック', '水割り', '水', 'ストレート'];
-const serves = Array.isArray(b.serves) ? b.serves.filter(v => String(v).trim()) : [];
-const serveText = servePriority.find(v => serves.includes(v)) || serves[0] || '';
-const serveName = ({'ソーダ':'ソーダ割り','ソーダ割り':'ソーダ割り','ロック':'ロック','水':'水割り','水割り':'水割り','ストレート':'ストレート','トワイスアップ':'トワイスアップ','トニックウォーター':'トニックウォーター割り','お湯':'お湯割り'})[serveText] || serveText;
+// v1.31 beta11: fixed straight for bottles with list price >= 10,000 yen.
+const serveName = chooseServing(b);
 const servePills = serveName ? [pill(serveName + 'がおすすめ', 'serve-pill')] : [];
 $('today-pills').innerHTML = [categoryPill, ...servePills].join('');
 $('today-description').textContent = b.taste || b.aroma || b.note || '今日の一杯にいかがでしょうか。';
