@@ -441,6 +441,16 @@ button,input,select {
 	border-color:#616c75
 }
 
+
+/* Additional category colors: v1.31 beta11 */
+.kind-sake { background:#40513b; color:#e2f4b6; border-color:#71885c }
+.kind-rum { background:#66402f; color:#ffdab1; border-color:#956348 }
+.kind-tequila { background:#39544a; color:#d1f7b6; border-color:#608c70 }
+.kind-wine { background:#602d44; color:#ffd2e2; border-color:#91516b }
+.kind-beer { background:#635122; color:#ffeb9e; border-color:#9b813c }
+.kind-brandy { background:#553d35; color:#f4c9ac; border-color:#846052 }
+.kind-pisco { background:#304d59; color:#c3eff7; border-color:#527988 }
+
 @media(max-width:500px) {
 	.cards {
 		grid-template-columns:repeat(2,minmax(0,1fr));
@@ -1734,6 +1744,8 @@ header { padding-top: 22px; padding-bottom: 21px; }
   animation:cellar-ambient-b 25s ease-in-out infinite alternate;
 }
 .hero > * {position:relative; z-index:1;}
+/* Keep celebratory confetti above the animated background and bottle content. */
+.hero > .confetti-layer { position:absolute; inset:0; z-index:8; pointer-events:none; }
 @keyframes cellar-ambient-a {
   from { transform:translate(-4%, 2%) scale(1.01); }
   to   { transform:translate(4%, -3%) scale(1.07); }
@@ -1744,16 +1756,6 @@ header { padding-top: 22px; padding-bottom: 21px; }
 }
 @media (prefers-reduced-motion:reduce) {
   .hero::before,.hero::after {animation:none;}
-}
-
-/* v1.31 beta10: steady two-line description slot, including during roulette.
-   Overrides the old v1.26 height:auto so one/two-line text never shifts the panel. */
-.hero #today-description {
-    height: 3.3em;
-    min-height: 3.3em;
-    max-height: 3.3em;
-    overflow: hidden;
-    flex-shrink: 0;
 }
 </style>
  </head>
@@ -6776,7 +6778,7 @@ function formatAbv(raw) {
 function formatPrice(v) { if (v === null || v === undefined || String(v).trim() === '')
     return ''; const n = Number(v); return Number.isFinite(n) ? new Intl.NumberFormat('ja-JP').format(n) + '円' : String(v); }
 function formatPurchaseMonth(v) { const s = String(v ?? '').trim(); const m = s.match(/^(\d{4})[-/](\d{1,2})/); return m ? `${m[1]}年${Number(m[2])}月` : s; }
-function kindClass(c) { return ({ 'ウイスキー': 'whisky', 'ジン': 'gin', '梅酒': 'umeshu', '焼酎': 'shochu', 'リキュール': 'liqueur' })[c] || 'other'; }
+function kindClass(c) { return ({ 'ウイスキー': 'whisky', 'ジン': 'gin', '梅酒': 'umeshu', '焼酎': 'shochu', 'リキュール': 'liqueur', '日本酒': 'sake', 'ラム': 'rum', 'テキーラ': 'tequila', 'ワイン': 'wine', 'ビール': 'beer', 'ブランデー': 'brandy', 'ピスコ': 'pisco' })[c] || 'other'; }
 function kindTag(c) { return `<span class="kind kind-${kindClass(c)}">${esc(c || 'その他')}</span>`; }
 function pill(s, className = '') { return `<span class="pill${className ? ' ' + className : ''}">${esc(s)}</span>`; }
 function renderToday() { const pool = ownedItems(); if (!pool.length && !selectedBottle) {
@@ -7044,29 +7046,8 @@ async function spinRecommendation(button, picker, label) {
     const hero = document.querySelector('.hero');
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     for (const b of document.querySelectorAll('.recommendation-buttons button')) b.disabled = true;
-    // v1.31 beta11: Maintain button dimensions while temporarily showing "抽選中".
     const originalMarkup = button.innerHTML;
-    const buttonStyle = { width: button.style.width, height: button.style.height,
-                          minWidth: button.style.minWidth, minHeight: button.style.minHeight };
-    const buttonRect = button.getBoundingClientRect();
-    button.style.width = `${buttonRect.width}px`;
-    button.style.height = `${buttonRect.height}px`;
-    button.style.minWidth = `${buttonRect.width}px`;
-    button.style.minHeight = `${buttonRect.height}px`;
     button.textContent = '抽選中';
-    const description = $('today-description');
-    const descriptionStyle = {
-        height: description.style.height,
-        minHeight: description.style.minHeight,
-        maxHeight: description.style.maxHeight
-    };
-    const descriptionHeight = description.getBoundingClientRect().height;
-    // The old 'height:auto' rule made one-line/two-line descriptions change panel height.
-    // Preserve the current slot size for the entire draw, without permanently enlarging it.
-    description.style.height = `${descriptionHeight}px`;
-    description.style.minHeight = `${descriptionHeight}px`;
-    description.style.maxHeight = `${descriptionHeight}px`;
-    button.setAttribute('aria-busy', 'true');
     hero.classList.add('is-rolling');
     try {
         if (!reduced) {
@@ -7084,15 +7065,7 @@ async function spinRecommendation(button, picker, label) {
     } finally {
         hero.classList.remove('is-rolling');
         for (const b of document.querySelectorAll('.recommendation-buttons button')) b.disabled = false;
-        button.removeAttribute('aria-busy');
         button.innerHTML = originalMarkup;
-        button.style.width = buttonStyle.width;
-        button.style.height = buttonStyle.height;
-        button.style.minWidth = buttonStyle.minWidth;
-        button.style.minHeight = buttonStyle.minHeight;
-        description.style.height = descriptionStyle.height;
-        description.style.minHeight = descriptionStyle.minHeight;
-        description.style.maxHeight = descriptionStyle.maxHeight;
         rouletteRunning = false;
     }
 }
