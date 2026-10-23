@@ -6990,11 +6990,18 @@ const moodProfiles = {
 const lastMoodKey = 'whisky-liquor-mood-history-v131';
 let lastMood = {};
 try { lastMood = JSON.parse(localStorage.getItem(lastMoodKey) || '{}') || {}; } catch (_) {}
-// 甘口・フルーティーの抽選では、スモーキーを併せ持つ銘柄を対象外とする。
-// 他の抽選（スモーキー・さっぱり・辛口・ランダム・天気）は従来どおり。
+// 甘口・フルーティー抽選では、スモーキーな銘柄とピート感のある銘柄を除外する。
+// ピートは独立した味わいタグがないため、登録済みの香り・味・余韻・備考で補完判定する。
+// 「ノンピート」「ピート不使用」などの否定表現だけでは除外しない。
+function hasPeatCharacter(b) {
+    const description = [b.aroma, b.taste, b.finish, b.note].filter(Boolean).join(' ')
+        .replace(/ノン[・\s-]*ピート(?:系|寄り)?|ノンピーテッド|非ピート|アンピーテッド|non[-\s]?peated|unpeated|ピート不使用|ピート(?:感)?(?:が|は)?(?:ない|無し|なし)|ピートではない/gi, '');
+    return /ピート|ピーテッド|泥炭|peat(?:ed|y)?/i.test(description);
+}
 function eligibleForMood(b, mood) {
+    if (mood !== 'sweet' && mood !== 'fruity') return true;
     const tags = b.flavors || [];
-    return !(mood === 'sweet' || mood === 'fruity') || !tags.includes('スモーキー');
+    return !tags.includes('スモーキー') && !hasPeatCharacter(b);
 }
 function pickMood(mood) {
     const profile = moodProfiles[mood];
