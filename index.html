@@ -1757,6 +1757,21 @@ header { padding-top: 22px; padding-bottom: 21px; }
 @media (prefers-reduced-motion:reduce) {
   .hero::before,.hero::after {animation:none;}
 }
+/* v2.15: Footer identity mirrors the top brand; keep former footer font size. */
+footer .footer-brand {
+  font: inherit;
+  font-size: 12px;
+  color: var(--text);
+}
+footer .footer-brand-sub {
+  font: inherit;
+  font-size: 12px;
+  color: var(--gold);
+}
+footer .footer-version {
+  color: #778181;
+  font-size: 11px;
+}
 </style>
  </head>
  <body>
@@ -1901,11 +1916,13 @@ header { padding-top: 22px; padding-bottom: 21px; }
    </div>
   </dialog>
   <footer>
-   WHISKY &amp; LIQUOR · Private collection
+   <span class="footer-brand">✦THE CELLAR <span class="footer-brand-sub">WHISKY&amp;LIQUOR</span></span>
    <br/>
    <span>
     ※ 酒類情報は管理台帳に基づくものです。20歳未満の飲酒は法律で禁止されています。
    </span>
+   <br/>
+   <span class="footer-version">index v2.15</span>
   </footer>
   <script id="embedded-data" type="application/json">
 {
