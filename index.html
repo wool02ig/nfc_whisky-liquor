@@ -6990,10 +6990,16 @@ const moodProfiles = {
 const lastMoodKey = 'whisky-liquor-mood-history-v131';
 let lastMood = {};
 try { lastMood = JSON.parse(localStorage.getItem(lastMoodKey) || '{}') || {}; } catch (_) {}
+// 甘口・フルーティーの抽選では、スモーキーを併せ持つ銘柄を対象外とする。
+// 他の抽選（スモーキー・さっぱり・辛口・ランダム・天気）は従来どおり。
+function eligibleForMood(b, mood) {
+    const tags = b.flavors || [];
+    return !(mood === 'sweet' || mood === 'fruity') || !tags.includes('スモーキー');
+}
 function pickMood(mood) {
     const profile = moodProfiles[mood];
     if (!profile) return null;
-    const candidates = ownedItems().map(b => {
+    const candidates = ownedItems().filter(b => eligibleForMood(b, mood)).map(b => {
         const tags = new Set(b.flavors || []);
         let weight = Object.entries(profile).reduce((total, [tag, point]) => total + (tags.has(tag) ? point : 0), 0);
         if (mood === 'fresh' && tags.has('スモーキー')) weight *= 0.45;
@@ -7074,7 +7080,7 @@ $('random-reco').addEventListener('click', () => spinRecommendation($('random-re
 document.querySelectorAll('[data-mood]').forEach(button => {
     button.addEventListener('click', () => {
         const label = button.textContent;
-        if (!ownedItems().some(b => (b.flavors || []).some(tag => tag in moodProfiles[button.dataset.mood]))) {
+        if (!ownedItems().some(b => eligibleForMood(b, button.dataset.mood) && (b.flavors || []).some(tag => tag in moodProfiles[button.dataset.mood]))) {
             weatherLine.textContent = '選んだ味わいに合う所持銘柄がありません';
             return;
         }
