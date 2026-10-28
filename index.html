@@ -1514,6 +1514,15 @@ dialog#detail {
     align-self: center;
 }
 
+/* beta5: Reserve an identical two-line comment slot before, during and after a draw.
+   Prevent the panel bottom from shifting when a one-line comment becomes two lines. */
+.hero #today-description {
+    height: 3.3em;
+    min-height: 3.3em;
+    max-height: 3.3em;
+    overflow: hidden;
+    flex-shrink: 0;
+}
 /* v1.27: unify classification, flavor, sorting and checkboxes in one filter row. */
 .brand .overline {
     color: #aab0ae;
