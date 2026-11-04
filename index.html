@@ -1925,6 +1925,13 @@ footer .footer-version {
    <div id="detail-body">
    </div>
   </dialog>
+  <div id="compare-tray" class="compare-tray" aria-live="polite" aria-label="比較する銘柄">
+   <div class="compare-tray-info"><div class="compare-tray-heading">✦ COMPARISON LAB <span id="compare-count">0 / 4</span></div><div class="compare-chips" id="compare-chips"></div></div>
+   <div class="compare-actions"><button type="button" class="compare-button" id="compare-clear">解除</button><button type="button" class="compare-button primary" id="compare-open" disabled>比較する</button></div>
+  </div>
+  <dialog id="comparison-dialog" aria-label="銘柄比較">
+   <div class="compare-modal-inner"><div class="compare-modal-head"><div><span class="section-kicker">WOOL PRIVATE COLLECTION</span><h2>✦ WHISKY COMPARISON LAB</h2><p>2〜4銘柄の情報を比較 · 横スクロール対応</p></div><button type="button" class="compare-button" id="compare-close" aria-label="比較画面を閉じる">✕</button></div><div class="compare-modal-body" id="compare-body"></div></div>
+  </dialog>
   <footer>
    <span class="footer-brand">✦THE CELLAR <span class="footer-brand-sub">WHISKY&amp;LIQUOR</span></span>
    <br/>
@@ -1932,7 +1939,7 @@ footer .footer-version {
     ※ 酒類情報は管理台帳に基づくものです。20歳未満の飲酒は法律で禁止されています。
    </span>
    <br/>
-   <span class="footer-version">v2.15</span>
+   <span class="footer-version">v2.16</span>
   </footer>
   <script id="embedded-data" type="application/json">
 {
@@ -6831,6 +6838,64 @@ $('today-pills').innerHTML = [categoryPill, ...servePills].join('');
 $('today-description').textContent = b.taste || b.aroma || b.note || '今日の一杯にいかがでしょうか。';
 $('today-serve').textContent = '';
 }
+
+// Comparison selection is intentionally temporary; the Excel/JSON source is never modified.
+const comparisonIds = [];
+function toggleComparison(id) {
+    id = String(id);
+    if (!items.some(b => String(b.id) === id)) return;
+    const index = comparisonIds.indexOf(id);
+    if (index >= 0) comparisonIds.splice(index, 1);
+    else if (comparisonIds.length < 4) comparisonIds.push(id);
+    else { window.alert('比較できるのは最大4銘柄です。選択済みの銘柄を外してください。'); return; }
+    renderComparisonTray();
+    renderList();
+    if ($('detail').open && activeDetail && String(activeDetail.id) === id) showDetail(activeDetail);
+    if ($('comparison-dialog').open) renderComparisonTable();
+}
+function renderComparisonTray() {
+    const tray = $('compare-tray');
+    tray.classList.toggle('is-visible', comparisonIds.length > 0);
+    $('compare-count').textContent = `${comparisonIds.length} / 4`;
+    $('compare-chips').innerHTML = comparisonIds.map(id => {
+        const b = items.find(x => String(x.id) === id);
+        return b ? `<button type="button" class="compare-chip" data-remove-id="${esc(id)}" title="${esc(b.name)}を比較から外す">${esc(b.name)} ×</button>` : '';
+    }).join('');
+    $('compare-open').disabled = comparisonIds.length < 2;
+    document.body.style.paddingBottom = comparisonIds.length ? '108px' : '';
+}
+function renderComparisonTable() {
+    const chosen = comparisonIds.map(id => items.find(b => String(b.id) === id)).filter(Boolean);
+    if (chosen.length < 2) {
+        $('comparison-dialog').close();
+        return;
+    }
+    const fields = [
+        ['酒類', b => b.category], ['分類', b => b.type],
+        ['国・地域', b => [b.country, b.region].filter(Boolean).join(' / ')],
+        ['蒸溜所', b => b.distillery], ['度数', b => formatAbv(b.abv)],
+        ['定価（税込）', b => formatPrice(b.listPrice)],
+        ['所有状況', b => isOwned(b) ? '所持' : '◆ 未所持'],
+        ['購入年月', b => formatPurchaseMonth(b.purchaseMonth)],
+        ['主な樽', b => b.cask], ['香り', b => b.aroma],
+        ['味わい', b => b.taste], ['余韻', b => b.finish],
+        ['特徴', b => (b.flavors || []).join(' / ')],
+        ['おすすめの飲み方', b => (b.serves || []).join(' / ')],
+        ['殿堂入り', b => isFav(b) ? '★ 殿堂入り' : '—'],
+        ['初心者向け', b => isBeginner(b) ? '▼ 初心者向け' : '—'],
+        ['豆知識', b => b.note],
+        ['管理番号', b => String(b.managementNumber ?? '').trim()]
+    ];
+    const heads = chosen.map((b, index) => `<th scope="col"><span class="section-kicker">BOTTLE ${index + 1}</span><span class="compare-bottle-name">${esc(b.name)}</span>${kindTag(b.category)}<button type="button" class="compare-remove" data-remove-id="${esc(b.id)}">× 比較から外す</button></th>`).join('');
+    const rows = fields.map(([label, fn]) => {
+        const values = chosen.map(b => String(fn(b) ?? '').trim());
+        if (values.every(v => !v || v === '—')) return '';
+        const different = new Set(values).size > 1;
+        return `<tr><th scope="row">${esc(label)}</th>${values.map(v => `<td class="${different ? 'compare-different' : ''}">${v && v !== '—' ? esc(v) : '<span class="compare-empty">—</span>'}</td>`).join('')}</tr>`;
+    }).join('');
+    $('compare-body').innerHTML = `<table class="compare-table"><thead><tr><th scope="col">比較項目</th>${heads}</tr></thead><tbody>${rows}</tbody></table><p class="compare-note">※ 元のExcel・JSONに登録されたデータを表示しています。相違する項目には枠線を付けています。味わいの強さを推測して数値化することはしていません。</p>`;
+}
+
 function renderList() {
     const q = $('search').value.toLocaleLowerCase('ja'), c = $('category').value, f = $('flavor').value, onlyFav = $('favorite-only').checked, ownedOnly = $('owned-only').checked, beginnerOnly = $('beginner-only').checked, sort = $('sort').value;
     let found = items.filter(b => (!c || b.category === c) && (!f || (b.flavors || []).includes(f)) && (!onlyFav || isFav(b)) && (!ownedOnly || isOwned(b)) && (!beginnerOnly || isBeginner(b)) && [b.name, b.distillery, b.aroma, b.taste, b.country, b.region, b.type].join(' ').toLocaleLowerCase('ja').includes(q));
@@ -6866,10 +6931,10 @@ function renderList() {
             break;
     }
     $('count').textContent = `${found.length} / ${items.length} BOTTLES`;
-    $('cards').innerHTML = found.length ? found.map(b => `<div class="bottle" role="button" tabindex="0" data-id="${b.id}" aria-label="${esc(b.name)}の詳細を表示"><span class="bottle-top">${kindTag(b.category)}${isFav(b) ? '<span class="card-fav" aria-label="殿堂入り登録済み" title="殿堂入り">★</span>' : ''}${isBeginner(b) ? '<span class="card-beginner" aria-label="初心者向け" title="初心者向け">▼</span>' : ''}${!isOwned(b) ? '<span class="card-unowned" title="未所持" aria-label="未所持">◆</span>' : ''}<span class="go">↗</span></span><strong>${esc(b.name)}</strong><span class="list-badges">${isFav(b) ? '<span class="card-fav" aria-label="殿堂入り登録済み" title="殿堂入り">★</span>' : ''}${isBeginner(b) ? '<span class="card-beginner" aria-label="初心者向け" title="初心者向け">▼</span>' : ''}${!isOwned(b) ? '<span class="card-unowned" title="未所持" aria-label="未所持">◆</span>' : ''}</span><span class="bottle-origin">${esc([b.country, b.region].filter((v, i, a) => v && a.indexOf(v) === i).join(' / ') || '産地不明')}</span></div>`).join('') : '<p class="muted">該当する銘柄がありません。</p>';
+    $('cards').innerHTML = found.length ? found.map(b => `<div class="bottle" role="button" tabindex="0" data-id="${b.id}" aria-label="${esc(b.name)}の詳細を表示"><span class="bottle-top">${kindTag(b.category)}${isFav(b) ? '<span class="card-fav" aria-label="殿堂入り登録済み" title="殿堂入り">★</span>' : ''}${isBeginner(b) ? '<span class="card-beginner" aria-label="初心者向け" title="初心者向け">▼</span>' : ''}${!isOwned(b) ? '<span class="card-unowned" title="未所持" aria-label="未所持">◆</span>' : ''}<span class="go">↗</span></span><strong>${esc(b.name)}</strong><span class="list-badges">${isFav(b) ? '<span class="card-fav" aria-label="殿堂入り登録済み" title="殿堂入り">★</span>' : ''}${isBeginner(b) ? '<span class="card-beginner" aria-label="初心者向け" title="初心者向け">▼</span>' : ''}${!isOwned(b) ? '<span class="card-unowned" title="未所持" aria-label="未所持">◆</span>' : ''}</span><span class="bottle-origin">${esc([b.country, b.region].filter((v, i, a) => v && a.indexOf(v) === i).join(' / ') || '産地不明')}</span><button type="button" class="compare-add ${comparisonIds.includes(String(b.id)) ? 'is-selected' : ''}" data-compare-id="${esc(b.id)}" aria-pressed="${comparisonIds.includes(String(b.id))}" aria-label="${esc(b.name)}を比較${comparisonIds.includes(String(b.id)) ? 'から外す' : 'に追加'}">${comparisonIds.includes(String(b.id)) ? '✓ 選択中' : '+ 比較'}</button></div>`).join('') : '<p class="muted">該当する銘柄がありません。</p>';
 }
 function abvNumber(raw) { const n = parseFloat(raw); return Number.isFinite(n) ? (n > 0 && n < 1 ? n * 100 : n) : 0; }
-function showDetail(b) { activeDetail = b; let lines = [['酒類', b.category], ['分類', b.type], ['産地', [b.country, b.region].filter(Boolean).join(' / ')], ['蒸溜所', b.distillery], ['度数', formatAbv(b.abv)], ['所有状況', isOwned(b) ? '所持' : '◆ 未所持'], ['購入年月', formatPurchaseMonth(b.purchaseMonth)], ['定価（税込）', formatPrice(b.listPrice)], ['主な樽', b.cask], ['香り', b.aroma], ['味わい', b.taste], ['余韻', b.finish], ['特徴', b.flavors.join(' / ')], ['おすすめの飲み方', b.serves.join(' / ')], ['豆知識', b.note], ['管理番号', String(b.managementNumber ?? '').trim() || '—']]; $('detail-body').innerHTML = `<div class="detail-fixed-header"><span class="section-kicker">BOTTLE PROFILE</span><h2 class="detail-title">${esc(b.name)}</h2><div class="detail-actions">${isFav(b) ? '<span class="detail-favorite detail-favorite-readonly">★ 殿堂入り</span>' : ''}${isBeginner(b) ? '<span class="detail-beginner" aria-label="初心者向け">▼ 初心者向け</span>' : ''}${!isOwned(b) ? '<span class="detail-unowned" aria-label="未所持">◆ 未所持</span>' : ''}</div></div><div class="detail-scroll" tabindex="0" aria-label="銘柄の詳細情報"><dl>${lines.filter(x => x[1]).map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl></div>`; if (!$('detail').open)
+function showDetail(b) { activeDetail = b; let lines = [['酒類', b.category], ['分類', b.type], ['産地', [b.country, b.region].filter(Boolean).join(' / ')], ['蒸溜所', b.distillery], ['度数', formatAbv(b.abv)], ['所有状況', isOwned(b) ? '所持' : '◆ 未所持'], ['購入年月', formatPurchaseMonth(b.purchaseMonth)], ['定価（税込）', formatPrice(b.listPrice)], ['主な樽', b.cask], ['香り', b.aroma], ['味わい', b.taste], ['余韻', b.finish], ['特徴', b.flavors.join(' / ')], ['おすすめの飲み方', b.serves.join(' / ')], ['豆知識', b.note], ['管理番号', String(b.managementNumber ?? '').trim() || '—']]; $('detail-body').innerHTML = `<div class="detail-fixed-header"><span class="section-kicker">BOTTLE PROFILE</span><h2 class="detail-title">${esc(b.name)}</h2><div class="detail-actions">${isFav(b) ? '<span class="detail-favorite detail-favorite-readonly">★ 殿堂入り</span>' : ''}${isBeginner(b) ? '<span class="detail-beginner" aria-label="初心者向け">▼ 初心者向け</span>' : ''}${!isOwned(b) ? '<span class="detail-unowned" aria-label="未所持">◆ 未所持</span>' : ''}<button type="button" id="detail-compare" class="detail-compare ${comparisonIds.includes(String(b.id)) ? 'is-selected' : ''}" aria-pressed="${comparisonIds.includes(String(b.id))}">${comparisonIds.includes(String(b.id)) ? '✓ 比較選択中' : '+ 比較に追加'}</button></div></div><div class="detail-scroll" tabindex="0" aria-label="銘柄の詳細情報"><dl>${lines.filter(x => x[1]).map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl></div>`; if (!$('detail').open)
     $('detail').showModal(); }
 async function init() { try {
     let data;
@@ -7122,7 +7187,7 @@ document.querySelectorAll('[data-mood]').forEach(button => {
     });
 });
 ['search', 'category', 'flavor', 'sort', 'favorite-only', 'owned-only', 'beginner-only'].forEach(x => $(x).addEventListener(x === 'search' ? 'input' : 'change', renderList));
-$('cards').addEventListener('click', e => { const b = items.find(x => String(x.id) === e.target.closest('[data-id]')?.dataset.id); if (!b)
+$('cards').addEventListener('click', e => { const compareButton = e.target.closest('[data-compare-id]'); if (compareButton) { e.stopPropagation(); toggleComparison(compareButton.dataset.compareId); return; } const b = items.find(x => String(x.id) === e.target.closest('[data-id]')?.dataset.id); if (!b)
     return; showDetail(b); });
 $('cards').addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('.bottle')) {
     e.preventDefault();
@@ -7130,6 +7195,13 @@ $('cards').addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key ==
     if (b)
         showDetail(b);
 } });
+$('detail-body').addEventListener('click', e => { if (e.target.closest('#detail-compare') && activeDetail) toggleComparison(activeDetail.id); });
+$('compare-chips').addEventListener('click', e => { const btn=e.target.closest('[data-remove-id]'); if(btn) toggleComparison(btn.dataset.removeId); });
+$('compare-body').addEventListener('click', e => { const btn=e.target.closest('[data-remove-id]'); if(btn) toggleComparison(btn.dataset.removeId); });
+$('compare-clear').addEventListener('click', () => { comparisonIds.splice(0);renderComparisonTray();renderList();if($('comparison-dialog').open)$('comparison-dialog').close();if($('detail').open&&activeDetail)showDetail(activeDetail); });
+$('compare-open').addEventListener('click', () => { if(comparisonIds.length<2)return;renderComparisonTable();if($('detail').open)$('detail').close();$('comparison-dialog').showModal(); });
+$('compare-close').addEventListener('click', () => $('comparison-dialog').close());
+$('comparison-dialog').addEventListener('click', e => { if(e.target===$('comparison-dialog')){const r=e.target.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)e.target.close();} });
 $('close-detail').addEventListener('click', () => $('detail').close());
 $('detail').addEventListener('click', e => { if (e.target === $('detail')) {
     const r = e.target.getBoundingClientRect();
