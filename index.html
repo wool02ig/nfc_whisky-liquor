@@ -1871,6 +1871,13 @@ body.has-comparison {padding-bottom:145px;}
   .cards:not(.list-view) .bottle { padding-left: 37px; padding-right: 9px; }
   .cards:not(.list-view) .compare-check { left: 8px; top: 9px; }
 }
+/* v2.21: Grid cards use the top-right checkbox; list rows keep it leading. */
+.cards:not(.list-view) .bottle { padding-left: 12px; padding-right: 38px; }
+.cards:not(.list-view) .compare-check { left: auto; right: 9px; top: 9px; }
+@media (max-width: 500px) {
+  .cards:not(.list-view) .bottle { padding-left: 10px; padding-right: 36px; }
+  .cards:not(.list-view) .compare-check { left: auto; right: 8px; top: 9px; }
+}
 </style>
  </head>
  <body>
