@@ -1836,6 +1836,14 @@ body.has-comparison {padding-bottom:145px;}
 .compare-bottle-name {display:block;margin:9px 0;font-size:14px;font-weight:650;min-height:42px;overflow-wrap:anywhere;}
 .compare-empty {color:#73898f;}
 .compare-note {flex:0 0 auto;margin:0;padding:8px 16px;background:#101b1e;color:#a4b3b5;font-size:10px;border-top:1px solid #344145;}
+/* v2.18: one continuous table, uniform body backgrounds (including differences). */
+.compare-table tbody th,
+.compare-table tbody tr:not(.compare-group-heading)>th,
+.compare-table tbody td,
+.compare-table tbody td.compare-different {
+    background:#152126;
+    box-shadow:none;
+}
 @media(max-width:640px) {
  .compare-tray {gap:9px;padding:10px 10px calc(10px + env(safe-area-inset-bottom));align-items:stretch;flex-direction:column;max-height:175px;}
  .compare-tray-info {gap:5px;}
@@ -6968,37 +6976,34 @@ function renderComparisonTray() {
 function renderComparisonTable() {
     const chosen = comparisonIds.map(id => items.find(b => String(b.id) === id)).filter(Boolean);
     if (chosen.length < 2) { if ($('comparison-dialog').open) $('comparison-dialog').close(); return; }
-    const groups = [
-        ['基本情報', [['酒類', b => b.category], ['分類', b => b.type],
-            ['国・地域', b => [b.country, b.region].filter(Boolean).join(' / ')],
-            ['蒸溜所', b => b.distillery], ['度数', b => formatAbv(b.abv)],
-            ['所有状況', b => isOwned(b) ? '所持' : '◆ 未所持'],
-            ['購入年月', b => formatPurchaseMonth(b.purchaseMonth)],
-            ['管理番号', b => String(b.managementNumber ?? '').trim()]]],
-        ['価格・製法', [['定価（税込）', b => formatPrice(b.listPrice)], ['主な樽', b => b.cask]]],
-        ['香り・味わい', [['香り', b => b.aroma], ['味わい', b => b.taste],
-            ['余韻', b => b.finish], ['特徴', b => (b.flavors || []).join(' / ')],
-            ['おすすめの飲み方', b => (b.serves || []).join(' / ')]]],
-        ['評価・その他', [['殿堂入り', b => isFav(b) ? '★ 殿堂入り' : '—'],
-            ['初心者向け', b => isBeginner(b) ? '▼ 初心者向け' : '—'],
-            ['豆知識', b => b.note]]]
+    // A single uninterrupted comparison table, using the existing source fields.
+    const fields = [
+        ['酒類', b => b.category], ['分類', b => b.type],
+        ['国・地域', b => [b.country, b.region].filter(Boolean).join(' / ')],
+        ['蒸溜所', b => b.distillery], ['度数', b => formatAbv(b.abv)],
+        ['所有状況', b => isOwned(b) ? '所持' : '◆ 未所持'],
+        ['購入年月', b => formatPurchaseMonth(b.purchaseMonth)],
+        ['管理番号', b => String(b.managementNumber ?? '').trim()],
+        ['定価（税込）', b => formatPrice(b.listPrice)], ['主な樽', b => b.cask],
+        ['香り', b => b.aroma], ['味わい', b => b.taste],
+        ['余韻', b => b.finish], ['特徴', b => (b.flavors || []).join(' / ')],
+        ['おすすめの飲み方', b => (b.serves || []).join(' / ')],
+        ['殿堂入り', b => isFav(b) ? '★ 殿堂入り' : '—'],
+        ['初心者向け', b => isBeginner(b) ? '▼ 初心者向け' : '—'],
+        ['豆知識', b => b.note]
     ];
     const heads = chosen.map((b, index) => `<th scope="col"><div class="compare-head-top"><span class="section-kicker">BOTTLE ${index + 1}</span><div class="compare-head-controls"><button type="button" data-move-id="${esc(b.id)}" data-direction="-1" ${index === 0 ? 'disabled' : ''} aria-label="${esc(b.name)}を左へ移動">←</button><button type="button" data-move-id="${esc(b.id)}" data-direction="1" ${index === chosen.length - 1 ? 'disabled' : ''} aria-label="${esc(b.name)}を右へ移動">→</button><button type="button" class="compare-head-remove" data-remove-id="${esc(b.id)}" aria-label="${esc(b.name)}を比較から外す">×</button></div></div><span class="compare-bottle-name">${esc(b.name)}</span>${kindTag(b.category)}</th>`).join('');
     let visible = 0;
-    const bodies = groups.map(([groupName, fields], groupIndex) => {
-        const rows = fields.map(([label, fn]) => {
-            const values = chosen.map(b => String(fn(b) ?? '').trim());
-            if (values.every(v => !v || v === '—')) return '';
-            const different = new Set(values.map(v => v || '—')).size > 1;
-            if (comparisonDifferentOnly && !different) return '';
-            visible++;
-            return `<tr class="compare-data-row"><th scope="row">${esc(label)}</th>${values.map(v => `<td class="${different ? 'compare-different' : ''}">${v && v !== '—' ? esc(v) : '<span class="compare-empty">—</span>'}</td>`).join('')}</tr>`;
-        }).filter(Boolean).join('');
-        if (!rows) return '';
-        return `<tbody class="compare-group" data-group="${groupIndex}"><tr class="compare-group-heading"><th colspan="${chosen.length + 1}"><button type="button" class="compare-group-button" data-group-toggle="${groupIndex}" aria-expanded="true"><span>▾</span> ${esc(groupName)}</button></th></tr>${rows}</tbody>`;
-    }).join('');
+    const rows = fields.map(([label, fn]) => {
+        const values = chosen.map(b => String(fn(b) ?? '').trim());
+        if (values.every(v => !v || v === '—')) return '';
+        const different = new Set(values.map(v => v || '—')).size > 1;
+        if (comparisonDifferentOnly && !different) return '';
+        visible++;
+        return `<tr class="compare-data-row"><th scope="row">${esc(label)}</th>${values.map(v => `<td>${v && v !== '—' ? esc(v) : '<span class="compare-empty">—</span>'}</td>`).join('')}</tr>`;
+    }).filter(Boolean).join('');
     $('compare-visible-count').textContent = `${chosen.length}銘柄 · ${visible}項目`;
-    $('compare-body').innerHTML = `<div class="compare-table-scroll" role="region" tabindex="0" aria-label="比較表（左右にスクロールできます）"><table class="compare-table"><thead><tr><th scope="col" class="compare-label-head">比較項目</th>${heads}</tr></thead>${bodies}</table></div><p class="compare-note">左右にスクロールすると他の銘柄を確認できます。元のExcel・JSONの登録値を表示し、味の強さなどは推測していません。</p>`;
+    $('compare-body').innerHTML = `<div class="compare-table-scroll" role="region" tabindex="0" aria-label="比較表（左右にスクロールできます）"><table class="compare-table"><thead><tr><th scope="col" class="compare-label-head">比較項目</th>${heads}</tr></thead><tbody>${rows}</tbody></table></div><p class="compare-note">左右にスクロールすると他の銘柄を確認できます。元のExcel・JSONの登録値を表示し、味の強さなどは推測していません。</p>`;
 }
 
 function renderList() {
