@@ -1887,6 +1887,14 @@ body.has-comparison {padding-bottom:145px;}
 .cellar-tools-navigation .cellar-news-link{padding-inline:9px;font-size:12px}
 @media(max-width:640px){.cellar-tools-navigation{grid-template-columns:1fr 1fr}.cellar-tools-navigation .cellar-news-link{grid-column:1/-1}.cellar-tools-navigation .cellar-tool-link{font-size:11px}}
 @media(max-width:350px){.cellar-tools-navigation{grid-template-columns:1fr}.cellar-tools-navigation .cellar-news-link{grid-column:auto}}
+
+/* v2.22: keep BOTTLE MENU and its total count together on one mobile row. */
+@media (max-width: 767px) {
+  .catalog .section-heading { display:flex; align-items:baseline; flex-wrap:nowrap; gap:6px; min-width:0; }
+  .catalog .section-heading > div { min-width:0; flex:1 1 auto; }
+  .catalog .section-heading h2 { white-space:nowrap; overflow-wrap:normal; font-size:clamp(17px,5.7vw,28px); margin-bottom:16px; }
+  .catalog .section-heading .count { white-space:nowrap; flex:0 0 auto; min-width:0; font-size:clamp(9px,2.6vw,13px); padding-bottom:19px; }
+}
 </style>
  </head>
  <body>
