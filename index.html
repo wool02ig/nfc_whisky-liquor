@@ -1878,6 +1878,15 @@ body.has-comparison {padding-bottom:145px;}
   .cards:not(.list-view) .bottle { padding-left: 10px; padding-right: 36px; }
   .cards:not(.list-view) .compare-check { left: auto; right: 8px; top: 9px; }
 }
+
+/* NFC CELLAR tools: gold links share the NEWS navigation position */
+.cellar-tools-navigation{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.cellar-tools-navigation .cellar-tool-link{display:flex;align-items:center;justify-content:center;gap:7px;min-height:52px;padding:12px 9px;text-align:center;text-decoration:none;box-sizing:border-box;border-radius:12px;border:1px solid rgba(218,180,109,.72);background:linear-gradient(115deg,rgba(186,139,65,.33),rgba(123,93,45,.24) 55%,rgba(212,169,94,.30));color:#fbe6bd;font:700 12px system-ui,sans-serif;letter-spacing:.02em;box-shadow:inset 0 1px 0 rgba(255,242,210,.13),0 5px 18px rgba(0,0,0,.10);transition:background .15s,border-color .15s}
+.cellar-tools-navigation .cellar-tool-link:hover,.cellar-tools-navigation .cellar-tool-link:focus-visible{background:linear-gradient(115deg,rgba(213,163,79,.54),rgba(167,115,46,.38));border-color:#f1d69a}
+.cellar-tools-navigation .cellar-tool-link .news-arrow{color:#eed09a}
+.cellar-tools-navigation .cellar-news-link{padding-inline:9px;font-size:12px}
+@media(max-width:640px){.cellar-tools-navigation{grid-template-columns:1fr 1fr}.cellar-tools-navigation .cellar-news-link{grid-column:1/-1}.cellar-tools-navigation .cellar-tool-link{font-size:11px}}
+@media(max-width:350px){.cellar-tools-navigation{grid-template-columns:1fr}.cellar-tools-navigation .cellar-news-link{grid-column:auto}}
 </style>
  </head>
  <body>
@@ -1924,7 +1933,9 @@ body.has-comparison {padding-bottom:145px;}
       </div>
     </div>
    </section>
-   <nav class="news-navigation" aria-label="ウイスキーニュース">
+   <nav class="news-navigation cellar-tools-navigation" aria-label="コレクションツールとニュース">
+    <a class="cellar-tool-link" href="analytics.html" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">◫</span> CELLAR ANALYTICS <span class="news-arrow" aria-hidden="true">↗</span></a>
+    <a class="cellar-tool-link" href="worldmap.html" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">◎</span> WHISKY WORLD MAP <span class="news-arrow" aria-hidden="true">↗</span></a>
     <a class="cellar-news-link" href="/nfc_whisky-news/" target="_blank" rel="noopener noreferrer">ウイスキーの最新NEWSはこちらから <span class="news-arrow" aria-hidden="true">↗</span></a>
    </nav>
    <section class="catalog" id="catalog">
