@@ -6,6 +6,13 @@
 
 .section-label{display:block;margin-top:5px;color:var(--dim);font-size:12px;letter-spacing:0;font-weight:450;border:0;padding:0;background:none}
 .data-state:empty{display:none}.foot{text-align:center;line-height:2}.footer-version{color:#778181;font-size:11px}
+
+/* v4: shared frame across THE CELLAR ANALYTICS / WORLD MAP */
+html{box-sizing:border-box}*,*::before,*::after{box-sizing:inherit}
+body{width:100%;min-width:0;overflow-x:hidden}
+.wrap{width:100%;max-width:1140px;margin-left:auto;margin-right:auto;box-sizing:border-box}
+.world-layout,.map-panel,.map-frame,.world-layout>aside{min-width:0;max-width:100%}
+.map-frame svg{max-width:100%}
 </style></head><body><main class="wrap"><header class="masthead"><div><div class="overline">WOOL PRIVATE COLLECTION</div><h1>✦ THE CELLAR ANALYTICS</h1><div class="sub">所持ボトルを分析し数字で読み解く</div></div></header>
 <div class="filterbar"><label>表示対象 <select id="scope"><option value="owned">所持銘柄のみ</option><option value="all">登録銘柄すべて</option><option value="unowned">未所持のみ</option></select></label><label>酒類 <select id="category"><option value="all">すべての酒類</option></select></label></div><div class="hint data-state" id="source-state" role="status">データを読み込み中…</div><div class="grid metrics section" id="metrics"></div>
 <div class="grid two section"><section class="panel"><h2>COUNTRY DISTRIBUTION <small class="section-label">生産国</small></h2><div id="countries"></div></section><section class="panel"><h2>CATEGORY BREAKDOWN <small class="section-label">酒類</small></h2><div id="categories"></div></section></div>
