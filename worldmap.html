@@ -54,7 +54,7 @@ function render(){const prev=$('category').value;const cats=[...new Set(allItems
 const origins=countBy(filtered(),'country');if(currentCountry&&!origins.some(x=>x[0]===currentCountry)){currentCountry=null;currentRegion=null}if(!currentCountry)currentCountry=origins[0]?.[0]||null;
 $('country-links').innerHTML=origins.map(([c,n])=>`<button class="country-btn ${c===currentCountry?'active':''}" type="button" data-origin="${esc(c)}">${esc(c)} · ${fmt(n)}</button>`).join('')||'<span class="hint">該当データなし</span>';
 $('country-links').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>pick(b.dataset.origin)));
-const markers=$('markers');markers.replaceChildren();origins.forEach(([name,n])=>{if(!centers[name])return;const [lon,lat]=centers[name],x=(lon+180)/360*1000,y=(90-lat)/180*490;const r=Math.max(8,Math.min(17,7+Math.sqrt(n)*.75));const g=document.createElementNS('http://www.w3.org/2000/svg','g');g.setAttribute('class','marker'+(name===currentCountry?' active':''));g.setAttribute('transform',`translate(${x},${y})`);g.setAttribute('tabindex','0');g.setAttribute('role','button');g.setAttribute('aria-label',`${name} ${n}銘柄`);g.innerHTML=`<circle r="${r}"></circle><text y="3.7">${n}</text><title>${esc(name)}: ${n} 銘柄</title>`;g.addEventListener('pointerdown',e=>e.stopPropagation());g.addEventListener('click',e=>{e.stopPropagation();pick(name)});g.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();pick(name)}});markers.append(g)});
+const markers=$('markers');markers.replaceChildren();origins.forEach(([name,n])=>{if(!centers[name])return;const [lon,lat]=centers[name],x=(lon+180)/360*1000,y=(90-lat)/180*490;const r=Math.max(8,Math.min(17,7+Math.sqrt(n)*.75));const g=document.createElementNS('http://www.w3.org/2000/svg','g');g.setAttribute('class','marker'+(name===currentCountry?' active':''));g.setAttribute('transform',`translate(${x},${y})`);g.setAttribute('tabindex','0');g.setAttribute('role','button');g.setAttribute('aria-label',`${name} ${n}銘柄`);g.innerHTML=`<circle r="${r}"></circle><text y="3.7">${n}</text><title>${esc(name)}: ${n} 銘柄</title>`;g.addEventListener('click',e=>{e.stopPropagation();pick(name)});g.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();pick(name)}});markers.append(g)});
 // Natural Earth outlines are geographic background; markers and country buttons are the selection interface.
 $('world-svg').querySelectorAll('.land').forEach(p=>p.classList.remove('active'));renderDetail()}
 function pick(c){currentCountry=c;currentRegion=null;render()}
@@ -87,9 +87,66 @@ $('zoom-in').addEventListener('click',()=>setZoom(zoomLevel*1.4));
 $('zoom-out').addEventListener('click',()=>setZoom(zoomLevel/1.4));
 $('zoom-reset').addEventListener('click',()=>{centerX=500;centerY=245;setZoom(1)});
 mapSvg.addEventListener('wheel',e=>{if(e.ctrlKey||e.metaKey)return;e.preventDefault();setZoom(zoomLevel*(e.deltaY<0?1.15:1/1.15))},{passive:false});
-let drag=null;
-mapSvg.addEventListener('pointerdown',e=>{if(e.target.closest('.marker'))return;e.preventDefault();drag={x:e.clientX,y:e.clientY,cx:centerX,cy:centerY};mapSvg.setPointerCapture(e.pointerId)});
-mapSvg.addEventListener('pointermove',e=>{if(!drag)return;const box=mapSvg.getBoundingClientRect();centerX=drag.cx-(e.clientX-drag.x)/box.width*(1000/zoomLevel);centerY=drag.cy-(e.clientY-drag.y)/box.height*(490/zoomLevel);updateZoom()});
-mapSvg.addEventListener('pointerup',()=>drag=null);mapSvg.addEventListener('pointercancel',()=>drag=null);
+// Unified pointer gestures: one finger pans, two fingers pinch and pan.
+// Mouse dragging is supported by the same handlers. All changes stay inside the SVG viewBox.
+const activePointers=new Map();
+let gestureStart=null, gestureMoved=false, suppressMarkerClickUntil=0;
+function gestureMetrics(){
+  const a=[...activePointers.values()];
+  if(!a.length)return null;
+  const x=a.reduce((sum,p)=>sum+p.x,0)/a.length;
+  const y=a.reduce((sum,p)=>sum+p.y,0)/a.length;
+  const distance=a.length>=2?Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y):0;
+  return {x,y,distance,count:a.length};
+}
+function resetGestureBaseline(){gestureStart=gestureMetrics();}
+mapSvg.addEventListener('pointerdown',e=>{
+  if(e.pointerType==='mouse'&&e.button!==0)return;
+  activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  // Capture on the original target, so a normal tap on a marker remains clickable.
+  try{e.target.setPointerCapture(e.pointerId)}catch(_){/* unsupported target */}
+  if(activePointers.size===1)gestureMoved=false;
+  if(activePointers.size>=2){gestureMoved=true;suppressMarkerClickUntil=Date.now()+500;}
+  resetGestureBaseline();
+});
+mapSvg.addEventListener('pointermove',e=>{
+  if(!activePointers.has(e.pointerId))return;
+  activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  const next=gestureMetrics(),prev=gestureStart;
+  if(!prev||!next)return;
+  const box=mapSvg.getBoundingClientRect();
+  if(!box.width||!box.height)return;
+  const dx=next.x-prev.x,dy=next.y-prev.y;
+  const ratio=(next.count>=2&&prev.count>=2&&prev.distance>0)?next.distance/prev.distance:1;
+  const oldZoom=zoomLevel;
+  const newZoom=Math.max(1,Math.min(5,oldZoom*ratio));
+  // Keep the previous fingers' midpoint anchored on its map coordinate.
+  const anchorX=centerX+(prev.x-box.left-box.width/2)/box.width*(1000/oldZoom);
+  const anchorY=centerY+(prev.y-box.top-box.height/2)/box.height*(490/oldZoom);
+  centerX=anchorX-(next.x-box.left-box.width/2)/box.width*(1000/newZoom);
+  centerY=anchorY-(next.y-box.top-box.height/2)/box.height*(490/newZoom);
+  zoomLevel=newZoom;
+  if(Math.abs(dx)>1||Math.abs(dy)>1||Math.abs(ratio-1)>0.002){
+    gestureMoved=true;suppressMarkerClickUntil=Date.now()+500;
+  }
+  updateZoom();
+  gestureStart=next;
+  if(e.cancelable)e.preventDefault();
+});
+function endMapPointer(e){
+  if(!activePointers.has(e.pointerId))return;
+  activePointers.delete(e.pointerId);
+  resetGestureBaseline();
+  if(activePointers.size===0)gestureMoved=false;
+}
+mapSvg.addEventListener('pointerup',endMapPointer);
+mapSvg.addEventListener('pointercancel',endMapPointer);
+mapSvg.addEventListener('lostpointercapture',endMapPointer);
+// A pinch or a drag should never accidentally select a country marker.
+mapSvg.addEventListener('click',e=>{
+  if(e.target.closest('.marker')&&Date.now()<suppressMarkerClickUntil){
+    e.preventDefault();e.stopImmediatePropagation();
+  }
+},true);
 ['scope','category'].forEach(id=>$(id).addEventListener('change',render));loadData();
 </script></body></html>
